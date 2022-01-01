@@ -9,6 +9,12 @@ const {
   getUsersInRoom,
   startGame,
   addVote,
+  addTask,
+  getGame,
+  getGameTasks,
+  toggleReveal,
+  completeTask,
+  removeUser,
 } = require("./utils/users");
 
 const PORT = process.env.PORT || 4001;
@@ -20,10 +26,15 @@ io.on("connection", (socket) => {
   console.log("New client connected");
   // socket.emit('connected', 'you connected')
 
-  socket.on("join", ({ username, room }, callback) => {
+  socket.on("join", ({ username, room, gameId }, callback) => {
     const { user, error } = addUser({ id: socket.id, username, room });
+    const game = getGame(gameId.toLowerCase());
     if (error) {
       return callback(error);
+    }
+
+    if (!game) {
+      return callback("Game not found");
     }
 
     socket.join(user.room);
@@ -39,7 +50,11 @@ io.on("connection", (socket) => {
       room: user.room,
       users: getUsersInRoom(user.room),
     });
-    callback();
+    socket.emit("tasksUpdate", {
+      room: game.room,
+      tasks: getGameTasks(gameId),
+    });
+    callback(null, game, user);
   });
 
   socket.on("sendMessage", (message, callback) => {
@@ -87,8 +102,60 @@ io.on("connection", (socket) => {
     });
   });
 
+  socket.on("addTask", ({ gameId, title }, callback) => {
+    const { task, error } = addTask({ gameId, title });
+    const game = getGame(gameId);
+    if (error) {
+      return callback(error);
+    }
+
+    if (task) {
+      io.to(game.room).emit("tasksUpdate", {
+        room: game.room,
+        tasks: getGameTasks(gameId),
+      });
+
+      io.to(game.room).emit("roomInfo", {
+        room: game.room,
+        users: getUsersInRoom(game.room),
+      });
+
+      io.to(game.room).emit("gameUpdate", game);
+    }
+  });
+
+  socket.on("toggleReveal", ({ gameId }, callback) => {
+    const { error } = toggleReveal(gameId);
+
+    if (error) {
+      return callback(error);
+    }
+
+    const { error: completeError } = completeTask(gameId);
+
+    if (completeError) {
+      return callback(completeError);
+    }
+
+    const game = getGame(gameId);
+    io.to(game.room).emit("gameUpdate", game);
+
+    io.to(game.room).emit("tasksUpdate", {
+      room: game.room,
+      tasks: getGameTasks(gameId),
+    });
+  });
+
   socket.on("disconnect", () => {
     console.log("Client disconnected");
+    const { user } = removeUser(socket.id);
+    console.log("deleted", user);
+    if (user && user[0]) {
+      io.to(user[0].room).emit("roomInfo", {
+        room: user[0].room,
+        users: getUsersInRoom(user[0].room),
+      });
+    }
   });
 });
 server.listen(PORT, () => console.log(`Listening on ${PORT}`));
