@@ -35,7 +35,7 @@ const startGame = ({ id, name, voting, room, username }) => {
 };
 
 const getGame = (id) => {
-  console.log('games', games)
+  console.log("games", games);
   return games.find((game) => game.id.toLowerCase() === id.toLowerCase());
 };
 
@@ -63,11 +63,11 @@ const completeTask = (id) => {
   }
   const game = getGame(id);
   const users = getUsersInRoom(game.room);
-  
+
   const score = users.reduce((acc, curr) => {
     return acc + curr.vote;
   }, 0);
-  console.log('score', score)
+  console.log("score", score);
   task.completed = true;
   task.score = (score / users.length).toFixed(1);
 
@@ -83,8 +83,8 @@ const addUser = ({
   type = "contributor",
   creator = false,
 }) => {
-  username = username.trim().toLowerCase();
-  room = room.trim().toLowerCase();
+  username = username.trim();
+  room = room.trim();
 
   if (!username || !room) {
     return {
@@ -93,7 +93,10 @@ const addUser = ({
   }
 
   const existingUser = users.find((user) => {
-    return user.room === room && user.username === username;
+    return (
+      user.room === room &&
+      user.username.toLowerCase() === username.toLowerCase()
+    );
   });
 
   if (existingUser) {
@@ -141,7 +144,9 @@ const removeUser = (id) => {
 };
 
 const getUsersInRoom = (room) => {
-  const roomUsers = users.filter((user) => user.room === room.toLowerCase());
+  const roomUsers = users.filter(
+    (user) => user.room.toLowerCase() === room.toLowerCase()
+  );
   return roomUsers;
 };
 
@@ -161,7 +166,7 @@ const addTask = ({ gameId, title, completed = false, score = null }) => {
   };
 
   tasks.push(task);
-  reset(gameId)
+  reset(gameId);
   return {
     task,
   };
@@ -170,16 +175,38 @@ const addTask = ({ gameId, title, completed = false, score = null }) => {
 const reset = (gameId) => {
   const game = getGame(gameId);
   const users = getUsersInRoom(game.room);
-    
+
   users.forEach((user) => {
     user.vote = null;
   });
-  console.log('users in room', users)
-  game.reveal = false
+  console.log("users in room", users);
+  game.reveal = false;
 };
 
 const getGameTasks = (id) => {
   return tasks.filter((task) => task.gameId.toLowerCase() === id.toLowerCase());
+};
+
+const updateGame = ({ gameId, value, fieldName }) => {
+  const game = games.find(
+    (game) => game.id.toLowerCase() === gameId.toLowerCase()
+  );
+
+  game[fieldName] = value;
+
+  if (!game) {
+    null;
+  }
+
+  return game;
+};
+
+const updateUser = ({ userId, value, fieldName }) => {
+  const user = users.find((user) => user.id === userId);
+
+  if (!user) return null;
+  user[fieldName] = value;
+  return user;
 };
 
 module.exports = {
@@ -193,5 +220,7 @@ module.exports = {
   getGameTasks,
   toggleReveal,
   completeTask,
-  removeUser
+  removeUser,
+  updateGame,
+  updateUser,
 };
