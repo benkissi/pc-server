@@ -63,13 +63,14 @@ const completeTask = (id) => {
   }
   const game = getGame(id);
   const users = getUsersInRoom(game.room);
+  const votedUsers = users.filter(user => user.voted !== null)
 
   const score = users.reduce((acc, curr) => {
-    return acc + curr.vote;
+    return acc + (curr?.vote || 0);
   }, 0);
   console.log("score", score);
   task.completed = true;
-  task.score = (score / users.length).toFixed(1);
+  task.score = (score / votedUsers.length).toFixed(1);
 
   return {
     task,
